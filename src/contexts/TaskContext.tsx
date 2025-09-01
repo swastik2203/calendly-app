@@ -327,6 +327,16 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     if (error || !data) return
     const mapped = mapRowToTask(data, state.currentUser)
     dispatch({ type: 'ADD_TASK', payload: mapped })
+    
+    // Send email notifications for assignments
+    if (taskData.assignees.length > 0) {
+      const { EmailService } = await import('../utils/emailService')
+      if (taskData.type === 'Meeting') {
+        await EmailService.sendMeetingInvitation(mapped, taskData.assignees)
+      } else {
+        await EmailService.sendTaskAssignment(mapped, taskData.assignees)
+      }
+    }
   }
 
   const updateTask: TaskContextType['updateTask'] = async (id, updates) => {
@@ -356,6 +366,12 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     if (error || !data) return
     const mapped = mapRowToTask(data, state.currentUser)
     dispatch({ type: 'UPDATE_TASK', payload: mapped })
+    
+    // Send email notifications for status updates
+    if ((updates.status !== undefined || updates.completionStatus !== undefined) && mapped.assignees.length > 0) {
+      const { EmailService } = await import('../utils/emailService')
+      await EmailService.sendTaskUpdate(mapped, mapped.assignees)
+    }
   }
 
   const deleteTask: TaskContextType['deleteTask'] = async id => {
